@@ -1,7 +1,7 @@
 "use client";
 
 import { FormEvent, useEffect, useRef, useState } from "react";
-import { updateProduct } from "@/services/productservice";
+import { getApiErrorMessage, updateProduct } from "@/services/productservice";
 import { type Product } from "@/store/productstore";
 
 interface ProductUpdateModalProps {
@@ -100,8 +100,13 @@ export function ProductUpdateModal({
 
       onProductUpdated(updatedProduct);
       onClose();
-    } catch {
-      setError("Unable to update product. Please check the details.");
+    } catch (error) {
+      setError(
+        getApiErrorMessage(
+          error,
+          "Unable to update product. Please check the details.",
+        ),
+      );
     } finally {
       setIsUpdating(false);
     }

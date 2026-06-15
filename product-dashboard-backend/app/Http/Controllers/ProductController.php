@@ -7,7 +7,9 @@ use App\Http\Requests\UpdateProductRequest;
 use App\Http\Resources\ProductResource;
 use App\Models\Product;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
+use Throwable;
 
 class ProductController extends Controller
 {
@@ -97,17 +99,41 @@ class ProductController extends Controller
     public function store(StoreProductRequest $request)
     {
         $data = $request->validated();
+        $imagePath = null;
 
-        if ($request->hasFile('image')) {
-            $data['image'] = $request->file('image')->store('products', 'public');
+        try {
+            if ($request->hasFile('image')) {
+                $imagePath = $request->file('image')->store('products', 'public');
+
+                if (! $imagePath) {
+                    return $this->response([
+                        'message' => 'Unable to upload product image.',
+                    ], 500, false);
+                }
+
+                $data['image'] = $imagePath;
+            }
+
+            $product = Product::create($data);
+            $product->loadCount('ratings')->loadAvg('ratings', 'rating');
+
+            return (new ProductResource($product))
+                ->response()
+                ->setStatusCode(201);
+        } catch (Throwable $e) {
+            if ($imagePath) {
+                rescue(fn () => Storage::disk('public')->delete($imagePath));
+            }
+
+            Log::error('Product creation failed.', [
+                'image_path' => $imagePath,
+                'exception' => $e,
+            ]);
+
+            return $this->response([
+                'message' => 'Unable to create product. Please try again.',
+            ], 500, false);
         }
-
-        $product = Product::create($data);
-        $product->loadCount('ratings')->loadAvg('ratings', 'rating');
-
-        return (new ProductResource($product))
-            ->response()
-            ->setStatusCode(201);
     }
 
     /**
@@ -116,22 +142,56 @@ class ProductController extends Controller
     public function update(UpdateProductRequest $request, Product $product)
     {
         $data = $request->validated();
+        $newImagePath = null;
 
-        if ($request->hasFile('image')) {
-            if ($product->image) {
-                Storage::disk('public')->delete($product->image);
+        try {
+            if ($request->hasFile('image')) {
+                $newImagePath = $request->file('image')->store('products', 'public');
+
+                if (! $newImagePath) {
+                    return $this->response([
+                        'message' => 'Unable to upload product image.',
+                    ], 500, false);
+                }
+
+                $data['image'] = $newImagePath;
+            } elseif (array_key_exists('image', $data) && $data['image'] === null && $product->image) {
+                $data['image'] = null;
             }
 
-            $data['image'] = $request->file('image')->store('products', 'public');
-        } elseif (array_key_exists('image', $data) && $data['image'] === null && $product->image) {
-            Storage::disk('public')->delete($product->image);
+            $oldImagePath = $product->image;
+            $shouldDeleteOldImage = $oldImagePath &&
+                ! str_starts_with($oldImagePath, 'http://') &&
+                ! str_starts_with($oldImagePath, 'https://') &&
+                (
+                    ($newImagePath && $newImagePath !== $oldImagePath) ||
+                    (array_key_exists('image', $data) && $data['image'] === null)
+                );
+
+            $product->update($data);
+
+            if ($shouldDeleteOldImage) {
+                Storage::disk('public')->delete($oldImagePath);
+            }
+
+            return new ProductResource(
+                $product->fresh()->loadCount('ratings')->loadAvg('ratings', 'rating')
+            );
+        } catch (Throwable $e) {
+            if ($newImagePath) {
+                rescue(fn () => Storage::disk('public')->delete($newImagePath));
+            }
+
+            Log::error('Product update failed.', [
+                'product_id' => $product->id,
+                'new_image_path' => $newImagePath,
+                'exception' => $e,
+            ]);
+
+            return $this->response([
+                'message' => 'Unable to update product. Please try again.',
+            ], 500, false);
         }
-
-        $product->update($data);
-
-        return new ProductResource(
-            $product->fresh()->loadCount('ratings')->loadAvg('ratings', 'rating')
-        );
     }
 
     /**
@@ -139,14 +199,30 @@ class ProductController extends Controller
      */
     public function destroy(Product $product)
     {
-        if ($product->image) {
-            Storage::disk('public')->delete($product->image);
+        try {
+            if (
+                $product->image &&
+                ! str_starts_with($product->image, 'http://') &&
+                ! str_starts_with($product->image, 'https://')
+            ) {
+                Storage::disk('public')->delete($product->image);
+            }
+
+            $product->delete();
+
+            return $this->response([
+                'message' => 'Product deleted successfully.',
+            ]);
+        } catch (Throwable $e) {
+            Log::error('Product deletion failed.', [
+                'product_id' => $product->id,
+                'image_path' => $product->image,
+                'exception' => $e,
+            ]);
+
+            return $this->response([
+                'message' => 'Unable to delete product. Please try again.',
+            ], 500, false);
         }
-
-        $product->delete();
-
-        return $this->response([
-            'message' => 'Product deleted successfully.',
-        ]);
     }
 }

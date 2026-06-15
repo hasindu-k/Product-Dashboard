@@ -6,6 +6,11 @@ interface LaravelResource<T> {
   data: T;
 }
 
+interface ApiErrorResponse {
+  message?: string;
+  errors?: Record<string, string[]>;
+}
+
 export interface PaginationMeta {
   current_page: number;
   from: number | null;
@@ -164,4 +169,24 @@ export async function rateProduct(productId: number, rating: number) {
   );
 
   return unwrapResource(data);
+}
+
+export function getApiErrorMessage(
+  error: unknown,
+  fallback = "Request failed. Please try again.",
+) {
+  if (!axios.isAxiosError<ApiErrorResponse>(error)) {
+    return fallback;
+  }
+
+  const data = error.response?.data;
+  const validationMessages = data?.errors
+    ? Object.values(data.errors).flat()
+    : [];
+
+  if (validationMessages.length > 0) {
+    return validationMessages.join(" ");
+  }
+
+  return data?.message ?? fallback;
 }

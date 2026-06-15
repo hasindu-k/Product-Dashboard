@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use PHPOpenSourceSaver\JWTAuth\Exceptions\JWTException;
 use PHPOpenSourceSaver\JWTAuth\Facades\JWTAuth;
 
@@ -39,6 +40,11 @@ class AuthController extends Controller
                 ], 401, false);
             }
         } catch (JWTException $e) {
+            Log::error('JWT login failed.', [
+                'email' => $request->input('email'),
+                'exception' => $e,
+            ]);
+
             return $this->response([
                 'message' => 'Unable to log in. Please try again.',
             ], 500, false);
@@ -54,14 +60,36 @@ class AuthController extends Controller
 
     public function logout()
     {
-        JWTAuth::invalidate(JWTAuth::getToken());
+        try {
+            JWTAuth::invalidate(JWTAuth::getToken());
+        } catch (JWTException $e) {
+            Log::warning('JWT logout failed.', [
+                'user_id' => auth('api')->id(),
+                'exception' => $e,
+            ]);
+
+            return $this->response([
+                'message' => 'Unable to log out. Please try again.',
+            ], 401, false);
+        }
 
         return $this->response(['message' => 'Logged out successfully.']);
     }
 
     public function refresh()
     {
-        $token = JWTAuth::refresh(JWTAuth::getToken());
+        try {
+            $token = JWTAuth::refresh(JWTAuth::getToken());
+        } catch (JWTException $e) {
+            Log::warning('JWT refresh failed.', [
+                'user_id' => auth('api')->id(),
+                'exception' => $e,
+            ]);
+
+            return $this->response([
+                'message' => 'Unable to refresh token. Please log in again.',
+            ], 401, false);
+        }
 
         return $this->response([
             'message' => 'Token refreshed successfully.',

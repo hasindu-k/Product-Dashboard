@@ -1,7 +1,7 @@
 "use client";
 
 import { FormEvent, useEffect, useRef, useState } from "react";
-import { createProduct } from "@/services/productservice";
+import { createProduct, getApiErrorMessage } from "@/services/productservice";
 import { type Product } from "@/store/productstore";
 
 interface ProductCreateModalProps {
@@ -104,8 +104,13 @@ export function ProductCreateModal({
       onProductCreated(product);
       resetForm();
       onClose();
-    } catch {
-      setError("Unable to create product. Please check the details.");
+    } catch (error) {
+      setError(
+        getApiErrorMessage(
+          error,
+          "Unable to create product. Please check the details.",
+        ),
+      );
     } finally {
       setIsCreating(false);
     }

@@ -31,7 +31,7 @@ export function ProductFilters({
   onMaxPriceChange,
   onSortChange,
   onClear,
-}: ProductFiltersProps) {
+}: Readonly<ProductFiltersProps>) {
   return (
     <div className="grid gap-3 rounded border border-gray-200 p-4 md:grid-cols-5">
       <label className="grid gap-1 text-sm">
