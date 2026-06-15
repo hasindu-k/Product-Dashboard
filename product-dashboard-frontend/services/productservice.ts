@@ -14,8 +14,21 @@ export interface ProductFilterOptions {
   sortBy: SortOption;
 }
 
+export interface CreateProductPayload {
+  title: string;
+  category: string;
+  description: string;
+  price: string;
+  image?: File | null;
+}
+
+export interface UpdateProductPayload extends CreateProductPayload {
+  id: number;
+}
+
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000/api";
+const AUTH_TOKEN_KEY = "product_dashboard_token";
 
 const productApi = axios.create({
   baseURL: API_BASE_URL,
@@ -47,6 +60,57 @@ export async function getProducts() {
 export async function getProduct(id: string) {
   const { data } = await productApi.get<Product | LaravelResource<Product>>(
     `/products/${id}`,
+  );
+
+  return unwrapResource(data);
+}
+
+export async function createProduct(payload: CreateProductPayload) {
+  const formData = new FormData();
+  formData.append("title", payload.title);
+  formData.append("category", payload.category);
+  formData.append("description", payload.description);
+  formData.append("price", payload.price);
+
+  if (payload.image) {
+    formData.append("image", payload.image);
+  }
+
+  const token = localStorage.getItem(AUTH_TOKEN_KEY);
+  const { data } = await productApi.post<Product | LaravelResource<Product>>(
+    "/products",
+    formData,
+    {
+      headers: {
+        Authorization: token ? `Bearer ${token}` : undefined,
+      },
+    },
+  );
+
+  return unwrapResource(data);
+}
+
+export async function updateProduct(payload: UpdateProductPayload) {
+  const formData = new FormData();
+  formData.append("_method", "PUT");
+  formData.append("title", payload.title);
+  formData.append("category", payload.category);
+  formData.append("description", payload.description);
+  formData.append("price", payload.price);
+
+  if (payload.image) {
+    formData.append("image", payload.image);
+  }
+
+  const token = localStorage.getItem(AUTH_TOKEN_KEY);
+  const { data } = await productApi.post<Product | LaravelResource<Product>>(
+    `/products/${payload.id}`,
+    formData,
+    {
+      headers: {
+        Authorization: token ? `Bearer ${token}` : undefined,
+      },
+    },
   );
 
   return unwrapResource(data);

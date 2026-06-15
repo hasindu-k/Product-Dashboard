@@ -2,7 +2,9 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { ProductCreateModal } from "@/components/ProductCreateModal";
 import { ProductFilters, type SortOption } from "@/components/ProductFilters";
+import { ProductUpdateModal } from "@/components/ProductUpdateModal";
 import { getStoredUser, logout, type AuthUser } from "@/lib/auth";
 import { SearchBar } from "@/components/SearchBar";
 import {
@@ -10,7 +12,7 @@ import {
   getProductCategories,
   getProducts,
 } from "@/services/productservice";
-import { useProductStore } from "@/store/productstore";
+import { type Product, useProductStore } from "@/store/productstore";
 
 function getUserInitials(user: AuthUser) {
   return user.name
@@ -32,6 +34,8 @@ export default function Home() {
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [isLoadingProducts, setIsLoadingProducts] = useState(true);
   const [productError, setProductError] = useState("");
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
 
   useEffect(() => {
     const loadProducts = async () => {
@@ -84,6 +88,14 @@ export default function Home() {
     }
   };
 
+  const handleProductUpdated = (updatedProduct: Product) => {
+    setProducts(
+      products.map((product) =>
+        product.id === updatedProduct.id ? updatedProduct : product,
+      ),
+    );
+  };
+
   return (
     <main className="min-h-screen bg-white px-6 py-8 text-gray-900">
       <div className="mx-auto max-w-6xl">
@@ -130,6 +142,18 @@ export default function Home() {
           )}
         </div>
 
+        {user && (
+          <div className="mb-4 flex justify-end">
+            <button
+              type="button"
+              onClick={() => setIsCreateModalOpen(true)}
+              className="rounded bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-700"
+            >
+              Create product
+            </button>
+          </div>
+        )}
+
         <div className="mb-4 grid gap-4 rounded border border-gray-200 p-4">
           <SearchBar value={search} onChange={setSearch} />
           <ProductFilters
@@ -163,11 +187,11 @@ export default function Home() {
 
         <div className="grid gap-4 md:grid-cols-3">
           {filteredProducts.map((product) => (
-            <Link
+            <article
               key={product.id}
-              href={`/products/${product.id}`}
               className="rounded border border-gray-200 p-4 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
             >
+              <Link href={`/products/${product.id}`} className="block">
               {product.image ? (
                 <img
                   src={product.image}
@@ -190,7 +214,18 @@ export default function Home() {
                 <span className="font-semibold">${product.price}</span>
                 <span className="text-gray-600">⭐ {product.rating.rate}</span>
               </div>
-            </Link>
+              </Link>
+
+              {user && (
+                <button
+                  type="button"
+                  onClick={() => setSelectedProduct(product)}
+                  className="mt-4 w-full rounded border border-gray-300 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+                >
+                  Update
+                </button>
+              )}
+            </article>
           ))}
         </div>
 
@@ -200,6 +235,24 @@ export default function Home() {
           </p>
         )}
       </div>
+
+      {user && (
+        <ProductCreateModal
+          isOpen={isCreateModalOpen}
+          onClose={() => setIsCreateModalOpen(false)}
+          onProductCreated={(product) => setProducts([product, ...products])}
+        />
+      )}
+
+      {user && selectedProduct && (
+        <ProductUpdateModal
+          key={selectedProduct.id}
+          product={selectedProduct}
+          isOpen={true}
+          onClose={() => setSelectedProduct(null)}
+          onProductUpdated={handleProductUpdated}
+        />
+      )}
     </main>
   );
 }
