@@ -1,0 +1,12 @@
+.git
+.github
+product-dashboard-backend/.env
+product-dashboard-backend/.env.*
+product-dashboard-backend/vendor
+product-dashboard-backend/node_modules
+product-dashboard-backend/public/build
+product-dashboard-backend/public/storage
+product-dashboard-backend/storage/logs
+product-dashboard-backend/.phpunit.result.cache
+product-dashboard-backend/laravel-dev*.log
+product-dashboard-frontend/node_modules
