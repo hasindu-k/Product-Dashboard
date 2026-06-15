@@ -11,6 +11,7 @@ export interface Product {
     rate: number;
     count: number;
   };
+  user_rating?: number | null;
 }
 
 interface ProductState {

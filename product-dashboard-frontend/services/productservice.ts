@@ -37,6 +37,20 @@ const productApi = axios.create({
   },
 });
 
+productApi.interceptors.request.use((config) => {
+  if (typeof window === "undefined") {
+    return config;
+  }
+
+  const token = localStorage.getItem(AUTH_TOKEN_KEY);
+
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+
+  return config;
+});
+
 function unwrapResource<T>(response: T | LaravelResource<T>) {
   if (
     response &&
@@ -76,15 +90,9 @@ export async function createProduct(payload: CreateProductPayload) {
     formData.append("image", payload.image);
   }
 
-  const token = localStorage.getItem(AUTH_TOKEN_KEY);
   const { data } = await productApi.post<Product | LaravelResource<Product>>(
     "/products",
     formData,
-    {
-      headers: {
-        Authorization: token ? `Bearer ${token}` : undefined,
-      },
-    },
   );
 
   return unwrapResource(data);
@@ -102,30 +110,18 @@ export async function updateProduct(payload: UpdateProductPayload) {
     formData.append("image", payload.image);
   }
 
-  const token = localStorage.getItem(AUTH_TOKEN_KEY);
   const { data } = await productApi.post<Product | LaravelResource<Product>>(
     `/products/${payload.id}`,
     formData,
-    {
-      headers: {
-        Authorization: token ? `Bearer ${token}` : undefined,
-      },
-    },
   );
 
   return unwrapResource(data);
 }
 
 export async function rateProduct(productId: number, rating: number) {
-  const token = localStorage.getItem(AUTH_TOKEN_KEY);
   const { data } = await productApi.post<Product | LaravelResource<Product>>(
     `/products/${productId}/rating`,
     { rating },
-    {
-      headers: {
-        Authorization: token ? `Bearer ${token}` : undefined,
-      },
-    },
   );
 
   return unwrapResource(data);

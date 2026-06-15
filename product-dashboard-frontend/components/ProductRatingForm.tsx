@@ -1,9 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { getStoredUser, type AuthUser } from "@/lib/auth";
-import { rateProduct } from "@/services/productservice";
+import { getProduct, rateProduct } from "@/services/productservice";
 import { type Product } from "@/store/productstore";
 
 interface ProductRatingFormProps {
@@ -12,10 +12,50 @@ interface ProductRatingFormProps {
 
 export function ProductRatingForm({ product }: ProductRatingFormProps) {
   const [currentProduct, setCurrentProduct] = useState(product);
-  const [selectedRating, setSelectedRating] = useState(0);
+  const [selectedRating, setSelectedRating] = useState(
+    product.user_rating ?? 0,
+  );
   const [error, setError] = useState("");
   const [isSaving, setIsSaving] = useState(false);
   const [user] = useState<AuthUser | null>(() => getStoredUser());
+  const [isLoadingUserRating, setIsLoadingUserRating] = useState(
+    Boolean(user),
+  );
+
+  useEffect(() => {
+    if (!user) {
+      return;
+    }
+
+    let isCancelled = false;
+
+    async function loadUserRating() {
+      try {
+        const latestProduct = await getProduct(String(product.id));
+
+        if (isCancelled) {
+          return;
+        }
+
+        setCurrentProduct(latestProduct);
+        setSelectedRating(latestProduct.user_rating ?? 0);
+      } catch {
+        if (!isCancelled) {
+          setError("Unable to load your saved rating.");
+        }
+      } finally {
+        if (!isCancelled) {
+          setIsLoadingUserRating(false);
+        }
+      }
+    }
+
+    loadUserRating();
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [product.id, user]);
 
   const handleRating = async (rating: number) => {
     setSelectedRating(rating);
@@ -30,6 +70,7 @@ export function ProductRatingForm({ product }: ProductRatingFormProps) {
     try {
       const updatedProduct = await rateProduct(currentProduct.id, rating);
       setCurrentProduct(updatedProduct);
+      setSelectedRating(updatedProduct.user_rating ?? rating);
     } catch {
       setError("Unable to save your rating. Please try again.");
     } finally {
@@ -46,6 +87,14 @@ export function ProductRatingForm({ product }: ProductRatingFormProps) {
             {currentProduct.rating.rate} out of 5 from{" "}
             {currentProduct.rating.count} reviews
           </p>
+          {user && (
+            <p className="mt-1 text-sm text-gray-600">
+              Your rating:{" "}
+              {isLoadingUserRating
+                ? "Loading..."
+                : selectedRating || "Not rated yet"}
+            </p>
+          )}
         </div>
 
         {user ? (
@@ -54,7 +103,7 @@ export function ProductRatingForm({ product }: ProductRatingFormProps) {
               <button
                 key={rating}
                 type="button"
-                disabled={isSaving}
+                disabled={isSaving || isLoadingUserRating}
                 onClick={() => handleRating(rating)}
                 className={`h-10 w-10 rounded border text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-60 ${
                   selectedRating >= rating
