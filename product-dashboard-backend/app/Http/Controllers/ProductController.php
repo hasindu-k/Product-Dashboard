@@ -13,9 +13,6 @@ use Throwable;
 
 class ProductController extends Controller
 {
-    /**
-     * Display a listing of the resource.
-     */
     public function index(Request $request)
     {
         $request->validate([
@@ -44,15 +41,15 @@ class ProductController extends Controller
             })
             ->when(
                 $request->filled('category') && $request->string('category')->toString() !== 'all',
-                fn ($query) => $query->where('category', $request->string('category')->toString())
+                fn($query) => $query->where('category', $request->string('category')->toString())
             )
             ->when(
                 $request->filled('min_price'),
-                fn ($query) => $query->where('price', '>=', $request->float('min_price'))
+                fn($query) => $query->where('price', '>=', $request->float('min_price'))
             )
             ->when(
                 $request->filled('max_price'),
-                fn ($query) => $query->where('price', '<=', $request->float('max_price'))
+                fn($query) => $query->where('price', '<=', $request->float('max_price'))
             );
 
         match ($sortBy) {
@@ -83,9 +80,6 @@ class ProductController extends Controller
         ]);
     }
 
-    /**
-     * Display the specified resource.
-     */
     public function show(Product $product)
     {
         $product->loadCount('ratings')->loadAvg('ratings', 'rating');
@@ -93,9 +87,6 @@ class ProductController extends Controller
         return new ProductResource($product);
     }
 
-    /**
-     * Store a newly created resource in storage.
-     */
     public function store(StoreProductRequest $request)
     {
         $data = $request->validated();
@@ -122,7 +113,7 @@ class ProductController extends Controller
                 ->setStatusCode(201);
         } catch (Throwable $e) {
             if ($imagePath) {
-                rescue(fn () => Storage::disk('public')->delete($imagePath));
+                rescue(fn() => Storage::disk('public')->delete($imagePath));
             }
 
             Log::error('Product creation failed.', [
@@ -136,9 +127,6 @@ class ProductController extends Controller
         }
     }
 
-    /**
-     * Update the specified resource in storage.
-     */
     public function update(UpdateProductRequest $request, Product $product)
     {
         $data = $request->validated();
@@ -179,7 +167,7 @@ class ProductController extends Controller
             );
         } catch (Throwable $e) {
             if ($newImagePath) {
-                rescue(fn () => Storage::disk('public')->delete($newImagePath));
+                rescue(fn() => Storage::disk('public')->delete($newImagePath));
             }
 
             Log::error('Product update failed.', [
@@ -194,9 +182,6 @@ class ProductController extends Controller
         }
     }
 
-    /**
-     * Remove the specified resource from storage.
-     */
     public function destroy(Product $product)
     {
         try {
