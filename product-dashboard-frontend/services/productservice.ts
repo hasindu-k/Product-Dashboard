@@ -6,6 +6,20 @@ interface LaravelResource<T> {
   data: T;
 }
 
+export interface PaginationMeta {
+  current_page: number;
+  from: number | null;
+  last_page: number;
+  per_page: number;
+  to: number | null;
+  total: number;
+}
+
+interface LaravelPaginatedResource<T> {
+  data: T[];
+  meta: PaginationMeta;
+}
+
 export interface ProductFilterOptions {
   search: string;
   category: string;
@@ -24,6 +38,11 @@ export interface CreateProductPayload {
 
 export interface UpdateProductPayload extends CreateProductPayload {
   id: number;
+}
+
+export interface ProductPaginationOptions {
+  page: number;
+  perPage: number;
 }
 
 const API_BASE_URL =
@@ -63,12 +82,21 @@ function unwrapResource<T>(response: T | LaravelResource<T>) {
   return response;
 }
 
-export async function getProducts() {
-  const { data } = await productApi.get<Product[] | LaravelResource<Product[]>>(
+export async function getProducts({
+  page,
+  perPage,
+}: ProductPaginationOptions) {
+  const { data } = await productApi.get<LaravelPaginatedResource<Product>>(
     "/products",
+    {
+      params: {
+        page,
+        per_page: perPage,
+      },
+    },
   );
 
-  return unwrapResource(data);
+  return data;
 }
 
 export async function getProduct(id: string) {

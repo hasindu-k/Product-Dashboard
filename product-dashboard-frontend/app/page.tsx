@@ -11,8 +11,20 @@ import {
   filterProducts,
   getProductCategories,
   getProducts,
+  type PaginationMeta,
 } from "@/services/productservice";
 import { type Product, useProductStore } from "@/store/productstore";
+
+const PRODUCTS_PER_PAGE = 9;
+
+const INITIAL_PAGINATION_META: PaginationMeta = {
+  current_page: 1,
+  from: null,
+  last_page: 1,
+  per_page: PRODUCTS_PER_PAGE,
+  to: null,
+  total: 0,
+};
 
 function getUserInitials(user: AuthUser) {
   return user.name
@@ -21,6 +33,13 @@ function getUserInitials(user: AuthUser) {
     .slice(0, 2)
     .map((part) => part[0]?.toUpperCase())
     .join("");
+}
+
+function getVisiblePages(currentPage: number, lastPage: number) {
+  const start = Math.max(1, currentPage - 2);
+  const end = Math.min(lastPage, currentPage + 2);
+
+  return Array.from({ length: end - start + 1 }, (_, index) => start + index);
 }
 
 export default function Home() {
@@ -36,6 +55,10 @@ export default function Home() {
   const [productError, setProductError] = useState("");
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [paginationMeta, setPaginationMeta] = useState<PaginationMeta>(
+    INITIAL_PAGINATION_META,
+  );
 
   useEffect(() => {
     const loadProducts = async () => {
@@ -43,8 +66,13 @@ export default function Home() {
       setProductError("");
 
       try {
-        const products = await getProducts();
-        setProducts(products);
+        const response = await getProducts({
+          page: currentPage,
+          perPage: PRODUCTS_PER_PAGE,
+        });
+
+        setProducts(response.data);
+        setPaginationMeta(response.meta);
       } catch {
         setProductError("Unable to load products from the backend.");
       } finally {
@@ -53,7 +81,7 @@ export default function Home() {
     };
 
     loadProducts();
-  }, [setProducts]);
+  }, [currentPage, setProducts]);
 
   const categories = useMemo(() => getProductCategories(products), [products]);
 
@@ -95,6 +123,23 @@ export default function Home() {
       ),
     );
   };
+
+  const handleProductCreated = (product: Product) => {
+    setProducts([product, ...products].slice(0, PRODUCTS_PER_PAGE));
+    setPaginationMeta((meta) => ({
+      ...meta,
+      total: meta.total + 1,
+      last_page: Math.max(1, Math.ceil((meta.total + 1) / meta.per_page)),
+      to: meta.to === null ? 1 : Math.min(meta.to + 1, meta.per_page),
+      from: meta.from ?? 1,
+    }));
+    setCurrentPage(1);
+  };
+
+  const visiblePages = getVisiblePages(
+    paginationMeta.current_page,
+    paginationMeta.last_page,
+  );
 
   return (
     <main className="min-h-screen bg-white px-6 py-8 text-gray-900">
@@ -173,7 +218,7 @@ export default function Home() {
         <p className="mb-4 text-sm text-gray-600">
           {isLoadingProducts
             ? "Loading products..."
-            : `Showing ${filteredProducts.length} of ${products.length} products`}
+            : `Showing ${filteredProducts.length} on this page of ${paginationMeta.total} products`}
         </p>
 
         {productError && (
@@ -234,13 +279,64 @@ export default function Home() {
             No products match your filters.
           </p>
         )}
+
+        {paginationMeta.last_page > 1 && (
+          <nav
+            className="mt-6 flex flex-wrap items-center justify-center gap-2"
+            aria-label="Product pagination"
+          >
+            <button
+              type="button"
+              onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
+              disabled={paginationMeta.current_page === 1 || isLoadingProducts}
+              className="rounded border border-gray-300 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-400"
+            >
+              Previous
+            </button>
+
+            {visiblePages.map((page) => (
+              <button
+                key={page}
+                type="button"
+                onClick={() => setCurrentPage(page)}
+                aria-current={
+                  page === paginationMeta.current_page ? "page" : undefined
+                }
+                disabled={isLoadingProducts}
+                className={`h-10 min-w-10 rounded border px-3 text-sm font-medium ${
+                  page === paginationMeta.current_page
+                    ? "border-gray-900 bg-gray-900 text-white"
+                    : "border-gray-300 text-gray-700 hover:bg-gray-50"
+                } disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-400`}
+              >
+                {page}
+              </button>
+            ))}
+
+            <button
+              type="button"
+              onClick={() =>
+                setCurrentPage((page) =>
+                  Math.min(paginationMeta.last_page, page + 1),
+                )
+              }
+              disabled={
+                paginationMeta.current_page === paginationMeta.last_page ||
+                isLoadingProducts
+              }
+              className="rounded border border-gray-300 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-400"
+            >
+              Next
+            </button>
+          </nav>
+        )}
       </div>
 
       {user && (
         <ProductCreateModal
           isOpen={isCreateModalOpen}
           onClose={() => setIsCreateModalOpen(false)}
-          onProductCreated={(product) => setProducts([product, ...products])}
+          onProductCreated={handleProductCreated}
         />
       )}
 

@@ -6,6 +6,7 @@ use App\Http\Requests\StoreProductRequest;
 use App\Http\Requests\UpdateProductRequest;
 use App\Http\Resources\ProductResource;
 use App\Models\Product;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 
 class ProductController extends Controller
@@ -13,12 +14,20 @@ class ProductController extends Controller
     /**
      * Display a listing of the resource.
      */
-    public function index()
+    public function index(Request $request)
     {
+        $request->validate([
+            'page' => ['sometimes', 'integer', 'min:1'],
+            'per_page' => ['sometimes', 'integer', 'min:1', 'max:50'],
+        ]);
+
+        $perPage = $request->integer('per_page', 9);
+
         $products = Product::withCount('ratings')
             ->withAvg('ratings', 'rating')
-            ->latest()
-            ->get();
+            ->latest('updated_at')
+            ->paginate($perPage)
+            ->withQueryString();
 
         return ProductResource::collection($products);
     }
