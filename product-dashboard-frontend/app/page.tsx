@@ -48,10 +48,15 @@ export default function Home() {
   };
 
   return (
-    <main className="p-6">
-      <h1 className="mb-4 text-3xl font-bold">Product Dashboard</h1>
+    <main className="min-h-screen bg-white p-6 text-gray-900">
+      <div className="mb-6">
+        <h1 className="text-3xl font-bold">Product Dashboard</h1>
+        <p className="mt-2 text-sm text-gray-600">
+          Browse products, compare prices, and open any item for details.
+        </p>
+      </div>
 
-      <div className="mb-4 grid gap-4">
+      <div className="mb-4 grid gap-4 rounded border border-gray-200 p-4">
         <SearchBar value={search} onChange={setSearch} />
         <ProductFilters
           categories={categories}
@@ -81,7 +86,7 @@ export default function Home() {
             <img
               src={product.image}
               alt={product.title}
-              className="h-48 w-full object-contain"
+              className="h-48 w-full rounded border border-gray-200 object-contain p-4"
             />
 
             <h2 className="mt-3 line-clamp-2 font-bold">{product.title}</h2>
@@ -92,7 +97,7 @@ export default function Home() {
 
             <div className="mt-3 flex items-center justify-between text-sm">
               <span className="font-semibold">${product.price}</span>
-              <span>⭐ {product.rating.rate}</span>
+              <span className="text-gray-600">⭐ {product.rating.rate}</span>
             </div>
           </Link>
         ))}
