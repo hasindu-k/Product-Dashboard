@@ -56,7 +56,7 @@ export default function Home() {
     <main className="min-h-screen bg-white px-6 py-8 text-gray-900">
       <div className="mx-auto max-w-6xl">
         <div className="mb-6">
-          <h1 className="text-3xl font-bold">Product Dashboard</h1>
+          <h1 className="text-3xl font-bold">Products</h1>
           <p className="mt-2 text-sm text-gray-600">
             Browse products, compare prices, and open any item for details.
           </p>

@@ -1,16 +1,35 @@
 import axios from "axios";
 import Link from "next/link";
+import type { Metadata } from "next";
 import { type Product } from "@/store/productstore";
 
 interface ProductDetailsProps {
   params: Promise<{ id: string }>;
 }
 
-export default async function ProductDetails({ params }: ProductDetailsProps) {
-  const { id } = await params;
-  const { data: product } = await axios.get<Product>(
+const getProduct = async (id: string) => {
+  const { data } = await axios.get<Product>(
     `https://fakestoreapi.com/products/${id}`,
   );
+
+  return data;
+};
+
+export async function generateMetadata({
+  params,
+}: ProductDetailsProps): Promise<Metadata> {
+  const { id } = await params;
+  const product = await getProduct(id);
+
+  return {
+    title: product.title,
+    description: product.description,
+  };
+}
+
+export default async function ProductDetails({ params }: ProductDetailsProps) {
+  const { id } = await params;
+  const product = await getProduct(id);
 
   return (
     <main className="min-h-screen bg-white px-6 py-8 text-gray-900">
