@@ -116,6 +116,21 @@ export async function updateProduct(payload: UpdateProductPayload) {
   return unwrapResource(data);
 }
 
+export async function rateProduct(productId: number, rating: number) {
+  const token = localStorage.getItem(AUTH_TOKEN_KEY);
+  const { data } = await productApi.post<Product | LaravelResource<Product>>(
+    `/products/${productId}/rating`,
+    { rating },
+    {
+      headers: {
+        Authorization: token ? `Bearer ${token}` : undefined,
+      },
+    },
+  );
+
+  return unwrapResource(data);
+}
+
 export function getProductCategories(products: Product[]) {
   return Array.from(new Set(products.map((product) => product.category)));
 }

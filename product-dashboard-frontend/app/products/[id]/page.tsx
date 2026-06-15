@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import { ProductRatingForm } from "@/components/ProductRatingForm";
 import { getProduct } from "@/services/productservice";
 
 interface ProductDetailsProps {
@@ -63,7 +64,8 @@ export default async function ProductDetails({ params }: ProductDetailsProps) {
             <h1 className="text-2xl font-bold">{product.title}</h1>
             <p className="mt-4 text-gray-700">{product.description}</p>
             <p className="mt-4 text-xl font-semibold">${product.price}</p>
-            <p className="mt-2 text-sm text-gray-600">
+            <ProductRatingForm product={product} />
+            <p className="sr-only">
               ⭐ {product.rating.rate} ({product.rating.count} reviews)
             </p>
           </div>
