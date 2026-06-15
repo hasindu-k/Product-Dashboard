@@ -19,17 +19,66 @@ class ProductController extends Controller
         $request->validate([
             'page' => ['sometimes', 'integer', 'min:1'],
             'per_page' => ['sometimes', 'integer', 'min:1', 'max:50'],
+            'search' => ['sometimes', 'nullable', 'string', 'max:255'],
+            'category' => ['sometimes', 'nullable', 'string', 'max:255'],
+            'min_price' => ['sometimes', 'nullable', 'numeric', 'min:0'],
+            'max_price' => ['sometimes', 'nullable', 'numeric', 'min:0'],
+            'sort_by' => ['sometimes', 'string', 'in:default,latest,oldest,price-asc,price-desc,rating-desc,title-asc'],
         ]);
 
         $perPage = $request->integer('per_page', 9);
+        $sortBy = $request->string('sort_by', 'default')->toString();
 
-        $products = Product::withCount('ratings')
+        $query = Product::withCount('ratings')
             ->withAvg('ratings', 'rating')
-            ->latest('updated_at')
+            ->when($request->filled('search'), function ($query) use ($request) {
+                $search = $request->string('search')->toString();
+
+                $query->where(function ($query) use ($search) {
+                    $query
+                        ->where('title', 'like', "%{$search}%")
+                        ->orWhere('description', 'like', "%{$search}%");
+                });
+            })
+            ->when(
+                $request->filled('category') && $request->string('category')->toString() !== 'all',
+                fn ($query) => $query->where('category', $request->string('category')->toString())
+            )
+            ->when(
+                $request->filled('min_price'),
+                fn ($query) => $query->where('price', '>=', $request->float('min_price'))
+            )
+            ->when(
+                $request->filled('max_price'),
+                fn ($query) => $query->where('price', '<=', $request->float('max_price'))
+            );
+
+        match ($sortBy) {
+            'latest' => $query->latest('updated_at'),
+            'oldest' => $query->oldest('updated_at'),
+            'price-asc' => $query->orderBy('price'),
+            'price-desc' => $query->orderByDesc('price'),
+            'rating-desc' => $query->orderByDesc('ratings_avg_rating'),
+            'title-asc' => $query->orderBy('title'),
+            default => $query->latest('updated_at'),
+        };
+
+        $products = $query
             ->paginate($perPage)
             ->withQueryString();
 
         return ProductResource::collection($products);
+    }
+
+    public function categories()
+    {
+        return $this->response([
+            'data' => Product::query()
+                ->select('category')
+                ->distinct()
+                ->orderBy('category')
+                ->pluck('category'),
+        ]);
     }
 
     /**

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { ProductCreateModal } from "@/components/ProductCreateModal";
 import { ProductFilters, type SortOption } from "@/components/ProductFilters";
@@ -8,7 +8,6 @@ import { ProductUpdateModal } from "@/components/ProductUpdateModal";
 import { getStoredUser, logout, type AuthUser } from "@/lib/auth";
 import { SearchBar } from "@/components/SearchBar";
 import {
-  filterProducts,
   getProductCategories,
   getProducts,
   type PaginationMeta,
@@ -46,10 +45,12 @@ export default function Home() {
   const { products, setProducts } = useProductStore();
   const [user, setUser] = useState<AuthUser | null>(() => getStoredUser());
   const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [category, setCategory] = useState("all");
   const [minPrice, setMinPrice] = useState("");
   const [maxPrice, setMaxPrice] = useState("");
   const [sortBy, setSortBy] = useState<SortOption>("default");
+  const [categories, setCategories] = useState<string[]>([]);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [isLoadingProducts, setIsLoadingProducts] = useState(true);
   const [productError, setProductError] = useState("");
@@ -61,6 +62,28 @@ export default function Home() {
   );
 
   useEffect(() => {
+    const timeoutId = window.setTimeout(() => {
+      setCurrentPage(1);
+      setDebouncedSearch(search);
+    }, 400);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [search]);
+
+  useEffect(() => {
+    const loadCategories = async () => {
+      try {
+        const categories = await getProductCategories();
+        setCategories(categories);
+      } catch {
+        setCategories([]);
+      }
+    };
+
+    loadCategories();
+  }, []);
+
+  useEffect(() => {
     const loadProducts = async () => {
       setIsLoadingProducts(true);
       setProductError("");
@@ -69,6 +92,11 @@ export default function Home() {
         const response = await getProducts({
           page: currentPage,
           perPage: PRODUCTS_PER_PAGE,
+          search: debouncedSearch,
+          category,
+          minPrice,
+          maxPrice,
+          sortBy,
         });
 
         setProducts(response.data);
@@ -81,24 +109,20 @@ export default function Home() {
     };
 
     loadProducts();
-  }, [currentPage, setProducts]);
-
-  const categories = useMemo(() => getProductCategories(products), [products]);
-
-  const filteredProducts = useMemo(
-    () =>
-      filterProducts(products, {
-        search,
-        category,
-        minPrice,
-        maxPrice,
-        sortBy,
-      }),
-    [category, maxPrice, minPrice, products, search, sortBy],
-  );
+  }, [
+    category,
+    currentPage,
+    debouncedSearch,
+    maxPrice,
+    minPrice,
+    setProducts,
+    sortBy,
+  ]);
 
   const clearFilters = () => {
+    setCurrentPage(1);
     setSearch("");
+    setDebouncedSearch("");
     setCategory("all");
     setMinPrice("");
     setMaxPrice("");
@@ -122,6 +146,26 @@ export default function Home() {
         product.id === updatedProduct.id ? updatedProduct : product,
       ),
     );
+  };
+
+  const handleCategoryChange = (value: string) => {
+    setCurrentPage(1);
+    setCategory(value);
+  };
+
+  const handleMinPriceChange = (value: string) => {
+    setCurrentPage(1);
+    setMinPrice(value);
+  };
+
+  const handleMaxPriceChange = (value: string) => {
+    setCurrentPage(1);
+    setMaxPrice(value);
+  };
+
+  const handleSortChange = (value: SortOption) => {
+    setCurrentPage(1);
+    setSortBy(value);
   };
 
   const handleProductCreated = (product: Product) => {
@@ -207,10 +251,10 @@ export default function Home() {
             minPrice={minPrice}
             maxPrice={maxPrice}
             sortBy={sortBy}
-            onCategoryChange={setCategory}
-            onMinPriceChange={setMinPrice}
-            onMaxPriceChange={setMaxPrice}
-            onSortChange={setSortBy}
+            onCategoryChange={handleCategoryChange}
+            onMinPriceChange={handleMinPriceChange}
+            onMaxPriceChange={handleMaxPriceChange}
+            onSortChange={handleSortChange}
             onClear={clearFilters}
           />
         </div>
@@ -218,7 +262,7 @@ export default function Home() {
         <p className="mb-4 text-sm text-gray-600">
           {isLoadingProducts
             ? "Loading products..."
-            : `Showing ${filteredProducts.length} on this page of ${paginationMeta.total} products`}
+            : `Showing ${products.length} on this page of ${paginationMeta.total} products`}
         </p>
 
         {productError && (
@@ -231,7 +275,7 @@ export default function Home() {
         )}
 
         <div className="grid gap-4 md:grid-cols-3">
-          {filteredProducts.map((product) => (
+          {products.map((product) => (
             <article
               key={product.id}
               className="rounded border border-gray-200 p-4 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
@@ -274,7 +318,7 @@ export default function Home() {
           ))}
         </div>
 
-        {!isLoadingProducts && filteredProducts.length === 0 && (
+        {!isLoadingProducts && products.length === 0 && (
           <p className="rounded border border-dashed border-gray-300 p-6 text-center text-gray-600">
             No products match your filters.
           </p>

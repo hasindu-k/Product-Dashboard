@@ -1,5 +1,7 @@
 export type SortOption =
   | "default"
+  | "latest"
+  | "oldest"
   | "price-asc"
   | "price-desc"
   | "rating-desc"
@@ -82,6 +84,8 @@ export function ProductFilters({
           onChange={(event) => onSortChange(event.target.value as SortOption)}
         >
           <option value="default">Default</option>
+          <option value="latest">Latest</option>
+          <option value="oldest">Oldest</option>
           <option value="price-asc">Price: low to high</option>
           <option value="price-desc">Price: high to low</option>
           <option value="rating-desc">Top rated</option>
