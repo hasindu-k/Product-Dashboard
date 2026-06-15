@@ -23,7 +23,6 @@ Route::middleware('auth:api')->group(function () {
     Route::prefix('products')->group(function () {
         Route::post('/', [ProductController::class, 'store']);
         Route::put('/{product}', [ProductController::class, 'update']);
-        Route::patch('/{product}', [ProductController::class, 'update']);
         Route::delete('/{product}', [ProductController::class, 'destroy']);
 
         Route::post('/{product}/rating', [RatingController::class, 'store']);
