@@ -2,29 +2,19 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\ListProductRequest;
 use App\Http\Requests\StoreProductRequest;
 use App\Http\Requests\UpdateProductRequest;
 use App\Http\Resources\ProductResource;
 use App\Models\Product;
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Throwable;
 
 class ProductController extends Controller
 {
-    public function index(Request $request)
+    public function index(ListProductRequest $request)
     {
-        $request->validate([
-            'page' => ['sometimes', 'integer', 'min:1'],
-            'per_page' => ['sometimes', 'integer', 'min:1', 'max:50'],
-            'search' => ['sometimes', 'nullable', 'string', 'max:255'],
-            'category' => ['sometimes', 'nullable', 'string', 'max:255'],
-            'min_price' => ['sometimes', 'nullable', 'numeric', 'min:0'],
-            'max_price' => ['sometimes', 'nullable', 'numeric', 'min:0'],
-            'sort_by' => ['sometimes', 'string', 'in:default,latest,oldest,price-asc,price-desc,rating-desc,title-asc'],
-        ]);
-
         $perPage = $request->integer('per_page', 9);
         $sortBy = $request->string('sort_by', 'default')->toString();
 
