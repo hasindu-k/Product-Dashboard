@@ -1,5 +1,10 @@
+import axios from "axios";
 import { type SortOption } from "@/components/ProductFilters";
 import { type Product } from "@/store/productstore";
+
+interface LaravelResource<T> {
+  data: T;
+}
 
 export interface ProductFilterOptions {
   search: string;
@@ -7,6 +12,44 @@ export interface ProductFilterOptions {
   minPrice: string;
   maxPrice: string;
   sortBy: SortOption;
+}
+
+const API_BASE_URL =
+  process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000/api";
+
+const productApi = axios.create({
+  baseURL: API_BASE_URL,
+  headers: {
+    Accept: "application/json",
+  },
+});
+
+function unwrapResource<T>(response: T | LaravelResource<T>) {
+  if (
+    response &&
+    typeof response === "object" &&
+    "data" in response
+  ) {
+    return response.data;
+  }
+
+  return response;
+}
+
+export async function getProducts() {
+  const { data } = await productApi.get<Product[] | LaravelResource<Product[]>>(
+    "/products",
+  );
+
+  return unwrapResource(data);
+}
+
+export async function getProduct(id: string) {
+  const { data } = await productApi.get<Product | LaravelResource<Product>>(
+    `/products/${id}`,
+  );
+
+  return unwrapResource(data);
 }
 
 export function getProductCategories(products: Product[]) {

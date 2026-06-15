@@ -1,25 +1,23 @@
-import axios from "axios";
 import Link from "next/link";
 import type { Metadata } from "next";
-import { type Product } from "@/store/productstore";
+import { notFound } from "next/navigation";
+import { getProduct } from "@/services/productservice";
 
 interface ProductDetailsProps {
   params: Promise<{ id: string }>;
 }
 
-const getProduct = async (id: string) => {
-  const { data } = await axios.get<Product>(
-    `https://fakestoreapi.com/products/${id}`,
-  );
-
-  return data;
-};
-
 export async function generateMetadata({
   params,
 }: ProductDetailsProps): Promise<Metadata> {
   const { id } = await params;
-  const product = await getProduct(id);
+  const product = await getProduct(id).catch(() => null);
+
+  if (!product) {
+    return {
+      title: "Product not found",
+    };
+  }
 
   return {
     title: product.title,
@@ -29,7 +27,11 @@ export async function generateMetadata({
 
 export default async function ProductDetails({ params }: ProductDetailsProps) {
   const { id } = await params;
-  const product = await getProduct(id);
+  const product = await getProduct(id).catch(() => null);
+
+  if (!product) {
+    notFound();
+  }
 
   return (
     <main className="min-h-screen bg-white px-6 py-8 text-gray-900">
@@ -42,11 +44,17 @@ export default async function ProductDetails({ params }: ProductDetailsProps) {
         </Link>
 
         <div className="grid gap-6 md:grid-cols-[280px_1fr]">
-          <img
-            src={product.image}
-            alt={product.title}
-            className="h-72 w-full rounded border border-gray-200 object-contain p-4"
-          />
+          {product.image ? (
+            <img
+              src={product.image}
+              alt={product.title}
+              className="h-72 w-full rounded border border-gray-200 object-contain p-4"
+            />
+          ) : (
+            <div className="flex h-72 w-full items-center justify-center rounded border border-gray-200 bg-gray-50 p-4 text-sm text-gray-500">
+              No image
+            </div>
+          )}
 
           <div>
             <p className="mb-2 text-sm capitalize text-gray-600">

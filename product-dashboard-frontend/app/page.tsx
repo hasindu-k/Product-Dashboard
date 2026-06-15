@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import axios from "axios";
 import Link from "next/link";
 import { ProductFilters, type SortOption } from "@/components/ProductFilters";
 import { getStoredUser, logout, type AuthUser } from "@/lib/auth";
@@ -9,8 +8,9 @@ import { SearchBar } from "@/components/SearchBar";
 import {
   filterProducts,
   getProductCategories,
+  getProducts,
 } from "@/services/productservice";
-import { type Product, useProductStore } from "@/store/productstore";
+import { useProductStore } from "@/store/productstore";
 
 function getUserInitials(user: AuthUser) {
   return user.name
@@ -30,13 +30,22 @@ export default function Home() {
   const [maxPrice, setMaxPrice] = useState("");
   const [sortBy, setSortBy] = useState<SortOption>("default");
   const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const [isLoadingProducts, setIsLoadingProducts] = useState(true);
+  const [productError, setProductError] = useState("");
 
   useEffect(() => {
     const loadProducts = async () => {
-      const { data } = await axios.get<Product[]>(
-        "https://fakestoreapi.com/products",
-      );
-      setProducts(data);
+      setIsLoadingProducts(true);
+      setProductError("");
+
+      try {
+        const products = await getProducts();
+        setProducts(products);
+      } catch {
+        setProductError("Unable to load products from the backend.");
+      } finally {
+        setIsLoadingProducts(false);
+      }
     };
 
     loadProducts();
@@ -138,8 +147,19 @@ export default function Home() {
         </div>
 
         <p className="mb-4 text-sm text-gray-600">
-          Showing {filteredProducts.length} of {products.length} products
+          {isLoadingProducts
+            ? "Loading products..."
+            : `Showing ${filteredProducts.length} of ${products.length} products`}
         </p>
+
+        {productError && (
+          <p
+            role="alert"
+            className="mb-4 rounded border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
+          >
+            {productError}
+          </p>
+        )}
 
         <div className="grid gap-4 md:grid-cols-3">
           {filteredProducts.map((product) => (
@@ -148,11 +168,17 @@ export default function Home() {
               href={`/products/${product.id}`}
               className="rounded border border-gray-200 p-4 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
             >
-              <img
-                src={product.image}
-                alt={product.title}
-                className="h-48 w-full rounded border border-gray-200 object-contain p-4"
-              />
+              {product.image ? (
+                <img
+                  src={product.image}
+                  alt={product.title}
+                  className="h-48 w-full rounded border border-gray-200 object-contain p-4"
+                />
+              ) : (
+                <div className="flex h-48 w-full items-center justify-center rounded border border-gray-200 bg-gray-50 p-4 text-sm text-gray-500">
+                  No image
+                </div>
+              )}
 
               <h2 className="mt-3 line-clamp-2 font-bold">{product.title}</h2>
 
@@ -168,7 +194,7 @@ export default function Home() {
           ))}
         </div>
 
-        {filteredProducts.length === 0 && (
+        {!isLoadingProducts && filteredProducts.length === 0 && (
           <p className="rounded border border-dashed border-gray-300 p-6 text-center text-gray-600">
             No products match your filters.
           </p>
